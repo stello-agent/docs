@@ -1,0 +1,16 @@
+{
+  "name": "stello-docs",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "docs:dev": "vitepress dev",
+    "docs:build": "vitepress build",
+    "docs:preview": "vitepress preview"
+  },
+  "packageManager": "pnpm@10.15.1",
+  "devDependencies": {
+    "vitepress": "^1.6.4",
+    "vue": "^3.5.31"
+  }
+}

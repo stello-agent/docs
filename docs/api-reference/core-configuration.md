@@ -124,21 +124,23 @@ interface ConfirmProtocol {
 
 ### SkillRouter / Skill
 
+Skill 对齐标准 [Agent Skills](https://agentskills.io/) 模式（lazy-loaded prompt injection）。LLM 通过内置的 `activate_skill` tool 按名称激活 skill，Engine 返回 skill 的 content 作为 tool result。
+
 ```typescript
 interface SkillRouter {
   register(skill: Skill): void
-  match(message: TurnRecord): Skill | null
+  get(name: string): Skill | undefined
   getAll(): Skill[]
 }
 
 interface Skill {
-  name: string
-  description: string
-  keywords: string[]
-  guidancePrompt: string
-  handler(ctx: SkillContext): Promise<SkillResult>
+  name: string          // 唯一名称
+  description: string   // LLM 据此判断是否激活
+  content: string       // 激活时注入的完整 prompt 内容
 }
 ```
+
+Engine 在有 skill 注册时自动追加 `activate_skill` tool 到 `getToolDefinitions()` 列表，LLM 可通过 tool call 激活 skill。
 
 ## StelloAgentRuntimeConfig
 

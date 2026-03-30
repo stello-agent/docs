@@ -124,21 +124,23 @@ interface ConfirmProtocol {
 
 ### SkillRouter / Skill
 
+Skills follow the standard [Agent Skills](https://agentskills.io/) pattern (lazy-loaded prompt injection). The LLM activates a skill by name via the built-in `activate_skill` tool, and the Engine returns the skill's content as the tool result.
+
 ```typescript
 interface SkillRouter {
   register(skill: Skill): void
-  match(message: TurnRecord): Skill | null
+  get(name: string): Skill | undefined
   getAll(): Skill[]
 }
 
 interface Skill {
-  name: string
-  description: string
-  keywords: string[]
-  guidancePrompt: string
-  handler(ctx: SkillContext): Promise<SkillResult>
+  name: string          // unique name
+  description: string   // LLM uses this to decide whether to activate
+  content: string       // full prompt content injected on activation
 }
 ```
+
+When skills are registered, the Engine automatically appends an `activate_skill` tool to `getToolDefinitions()`, allowing the LLM to activate skills via tool calls.
 
 ## StelloAgentRuntimeConfig
 

@@ -157,6 +157,38 @@ const agent = createEngine({
 })
 ```
 
+## 内置工具：activate_skill
+
+当 `SkillRouter` 中注册了 skill 时，Engine 自动在 tool 列表中追加一个 `activate_skill` 工具。LLM 看到所有已注册 skill 的 name + description，通过 tool call 按名称激活，Engine 返回 skill 的 content 作为 tool result 注入上下文。
+
+```typescript
+import { SkillRouterImpl } from '@stello-ai/core'
+
+const skills = new SkillRouterImpl()
+
+// 注册 skill：name + description 对 LLM 始终可见，content 在激活时注入
+skills.register({
+  name: 'code-review',
+  description: '代码审查专家，提供详细的代码质量分析',
+  content: `你是代码审查专家。请从以下维度分析代码：
+  - 正确性：逻辑是否正确
+  - 可维护性：命名、结构、注释
+  - 安全性：输入验证、注入风险
+  - 性能：不必要的计算、内存泄漏`,
+})
+
+// 传入 capabilities.skills
+const agent = createStelloAgent({
+  // ...
+  capabilities: {
+    // ...
+    skills,
+  },
+})
+```
+
+无需手动注册 `activate_skill` tool——Engine 检测到有 skill 时自动处理。
+
 ## 注意事项
 
 - **Session 不做 tool call 循环** -- Session 只做单次 LLM 调用，tool call 循环由 Engine（编排层）驱动

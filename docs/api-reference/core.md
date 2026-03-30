@@ -63,14 +63,6 @@ interface EngineStreamResult extends AsyncIterable<string> {
 }
 ```
 
-### ingest
-
-```typescript
-ingest(sessionId: string, message: TurnRecord): Promise<IngestResult>
-```
-
-在指定 Session 上执行 Skill 意图匹配。
-
 ### leaveSession
 
 ```typescript

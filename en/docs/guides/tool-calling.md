@@ -157,6 +157,38 @@ const agent = createEngine({
 })
 ```
 
+## Built-in Tool: activate_skill
+
+When skills are registered in `SkillRouter`, the Engine automatically appends an `activate_skill` tool to the tool list. The LLM sees all registered skills' name + description, activates one by name via tool call, and the Engine returns the skill's content as the tool result injected into context.
+
+```typescript
+import { SkillRouterImpl } from '@stello-ai/core'
+
+const skills = new SkillRouterImpl()
+
+// Register a skill: name + description always visible to LLM, content injected on activation
+skills.register({
+  name: 'code-review',
+  description: 'Code review expert providing detailed quality analysis',
+  content: `You are a code review expert. Analyze code from these perspectives:
+  - Correctness: is the logic right?
+  - Maintainability: naming, structure, comments
+  - Security: input validation, injection risks
+  - Performance: unnecessary computation, memory leaks`,
+})
+
+// Pass to capabilities.skills
+const agent = createStelloAgent({
+  // ...
+  capabilities: {
+    // ...
+    skills,
+  },
+})
+```
+
+No need to manually register the `activate_skill` tool — the Engine handles it automatically when skills are present.
+
 ## Notes
 
 - **Session does not run tool call loops** -- Session only makes a single LLM call; the tool call loop is driven by Engine (orchestration layer)

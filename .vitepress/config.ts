@@ -25,6 +25,8 @@ const zhSidebar = [
     text: '核心能力',
     items: [
       { text: '概览', link: '/docs/capabilities/' },
+      { text: '项目规划助手', link: '/docs/capabilities/planner' },
+      { text: '头脑风暴', link: '/docs/capabilities/brainstorm' },
     ],
   },
   {
@@ -89,6 +91,8 @@ const enSidebar = [
     text: 'Capabilities',
     items: [
       { text: 'Overview', link: '/en/docs/capabilities/' },
+      { text: 'Project Planner', link: '/en/docs/capabilities/planner' },
+      { text: 'Brainstorming', link: '/en/docs/capabilities/brainstorm' },
     ],
   },
   {

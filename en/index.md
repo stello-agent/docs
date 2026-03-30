@@ -6,7 +6,7 @@ hero:
   text: Open-source Conversation Topology Engine
   image:
     light: /stello_logo.svg
-    dark: /stello_logo_dark.png
+    dark: /stello_logo_dark.svg
     alt: Stello
   tagline: Let AI agents split linear conversations into a growing topology with three-layer memory and global awareness.
   actions:

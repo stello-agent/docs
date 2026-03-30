@@ -6,7 +6,7 @@ hero:
   text: 开源对话拓扑引擎
   image:
     light: /stello_logo.svg
-    dark: /stello_logo_dark.png
+    dark: /stello_logo_dark.svg
     alt: Stello
   tagline: 让 AI Agent 将线性对话分裂为会生长的认知拓扑，具备三层记忆和全局意识。
   actions:

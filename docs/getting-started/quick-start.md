@@ -170,7 +170,4 @@ DevTools 提供：
 
 ## 下一步
 
-- [核心概念 — 技能隐喻](/docs/core-concepts/skill-metaphor) — 理解 Session 如何组织为技能拓扑
-- [核心概念 — 三层记忆](/docs/core-concepts/three-layer-memory) — 深入 L3 / L2 / L1 记忆模型
-- [指南 — 自定义 LLM 适配器](/docs/guides/custom-llm-adapter) — 接入自定义 LLM
-- [指南 — 存储适配器](/docs/guides/storage-adapters) — 切换到 PostgreSQL 等持久化方案
+接下来建议阅读 [核心概念](/docs/core-concepts/)，理解 Stello 的设计理念和架构。

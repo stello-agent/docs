@@ -12,19 +12,20 @@ const zhSidebar = [
     ],
   },
   {
-    text: '核心能力',
-    items: [
-      { text: '概览', link: '/docs/capabilities/' },
-    ],
-  },
-  {
     text: '核心概念',
     items: [
+      { text: '概览', link: '/docs/core-concepts/' },
       { text: 'Session 与拓扑', link: '/docs/core-concepts/session-and-topology' },
       { text: '三层记忆模型', link: '/docs/core-concepts/three-layer-memory' },
       { text: '技能隐喻', link: '/docs/core-concepts/skill-metaphor' },
       { text: 'Consolidation 与 Integration', link: '/docs/core-concepts/consolidation-and-integration' },
       { text: '编排策略', link: '/docs/core-concepts/orchestration-strategy' },
+    ],
+  },
+  {
+    text: '核心能力',
+    items: [
+      { text: '概览', link: '/docs/capabilities/' },
     ],
   },
   {
@@ -76,19 +77,20 @@ const enSidebar = [
     ],
   },
   {
-    text: 'Capabilities',
-    items: [
-      { text: 'Overview', link: '/en/docs/capabilities/' },
-    ],
-  },
-  {
     text: 'Core Concepts',
     items: [
+      { text: 'Overview', link: '/en/docs/core-concepts/' },
       { text: 'Session & Topology', link: '/en/docs/core-concepts/session-and-topology' },
       { text: 'Three-Layer Memory', link: '/en/docs/core-concepts/three-layer-memory' },
       { text: 'Skill Metaphor', link: '/en/docs/core-concepts/skill-metaphor' },
       { text: 'Consolidation & Integration', link: '/en/docs/core-concepts/consolidation-and-integration' },
       { text: 'Orchestration Strategy', link: '/en/docs/core-concepts/orchestration-strategy' },
+    ],
+  },
+  {
+    text: 'Capabilities',
+    items: [
+      { text: 'Overview', link: '/en/docs/capabilities/' },
     ],
   },
   {
@@ -179,7 +181,7 @@ export default defineConfig({
   themeConfig: {
     logo: {
       light: '/stello_logo.svg',
-      dark: '/stello_logo_dark.png',
+      dark: '/stello_logo_dark.svg',
     },
 
     socialLinks: [

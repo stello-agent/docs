@@ -170,7 +170,4 @@ DevTools provides:
 
 ## Next Steps
 
-- [Core Concepts — Skill Metaphor](/en/docs/core-concepts/skill-metaphor) — How Sessions organize into a skill topology
-- [Core Concepts — Three-Layer Memory](/en/docs/core-concepts/three-layer-memory) — Deep dive into L3 / L2 / L1
-- [Guides — Custom LLM Adapter](/en/docs/guides/custom-llm-adapter) — Connect your own LLM
-- [Guides — Storage Adapters](/en/docs/guides/storage-adapters) — Switch to PostgreSQL or other persistence
+Continue to [Core Concepts](/en/docs/core-concepts/) to understand Stello's design philosophy and architecture.

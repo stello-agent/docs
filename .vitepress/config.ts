@@ -1,12 +1,14 @@
 import { defineConfig } from 'vitepress'
+import llmstxt from 'vitepress-plugin-llms'
+import { copyOrDownloadAsMarkdownButtons } from 'vitepress-plugin-llms'
 
 const zhSidebar = [
   {
     text: '快速开始',
     items: [
       { text: '简介', link: '/docs/getting-started/introduction' },
-      { text: '快速上手', link: '/docs/getting-started/quick-start' },
       { text: '安装', link: '/docs/getting-started/installation' },
+      { text: '快速上手', link: '/docs/getting-started/quick-start' },
     ],
   },
   {
@@ -69,8 +71,8 @@ const enSidebar = [
     text: 'Getting Started',
     items: [
       { text: 'Introduction', link: '/en/docs/getting-started/introduction' },
-      { text: 'Quick Start', link: '/en/docs/getting-started/quick-start' },
       { text: 'Installation', link: '/en/docs/getting-started/installation' },
+      { text: 'Quick Start', link: '/en/docs/getting-started/quick-start' },
     ],
   },
   {
@@ -161,6 +163,16 @@ export default defineConfig({
           '/en/docs/': enSidebar,
         },
       },
+    },
+  },
+
+  vite: {
+    plugins: [llmstxt()],
+  },
+
+  markdown: {
+    config(md) {
+      md.use(copyOrDownloadAsMarkdownButtons)
     },
   },
 

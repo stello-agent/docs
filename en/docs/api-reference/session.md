@@ -2,110 +2,137 @@
 
 The foundational session package providing memory-aware conversation units, LLM adapters, storage interfaces, and tool definitions.
 
+> `@stello-ai/core` re-exports commonly used interfaces from this package. Core users don't need to install this separately.
+
 ## Session
 
-A memory-aware conversation unit. Receives a message, assembles context, makes a single LLM call, stores L3, and returns the response.
+A memory-aware conversation unit. Each `send()` call: assembles context → single LLM call → stores L3 → returns response. Sessions don't do tool call loops (that's the orchestration layer's job).
+
+### send
 
 ```typescript
-interface Session {
-  readonly meta: Readonly<SessionMeta>
-  send(content: string): Promise<SendResult>
-  stream(content: string): StreamResult
-  messages(options?: MessageQueryOptions): Promise<Message[]>
-  systemPrompt(): Promise<string | null>
-  setSystemPrompt(content: string): Promise<void>
-  insight(): Promise<string | null>
-  setInsight(content: string): Promise<void>
-  memory(): Promise<string | null>
-  consolidate(fn: ConsolidateFn): Promise<void>
-  trimRecords(keepRecent: number): Promise<void>
-  fork(options: ForkOptions): Promise<Session>
-  updateMeta(updates: SessionMetaUpdate): Promise<void>
-  archive(): Promise<void>
-  setLLM(adapter: LLMAdapter): void
+send(content: string): Promise<SendResult>
+```
+
+Send a message. Context is assembled by fixed rules: `system prompt → insight → L3 records → user message`. When tokens exceed 80% of the context window and L2 exists, auto-compression kicks in: `system prompt → insight → L2 → recent L3 → user message`.
+
+```typescript
+interface SendResult {
+  content: string | null         // LLM text response
+  toolCalls?: ToolCall[]          // tool calls returned by LLM (upper layer decides execution)
+  usage?: { promptTokens: number; completionTokens: number }
 }
 ```
 
-| Method | Description |
-|--------|-------------|
-| `send` | Send a message: assemble context, call LLM, store L3, return result |
-| `stream` | Stream send: outputs chunks incrementally, auto-stores L3 when done |
-| `messages` | Read L3 conversation records with pagination and role filtering |
-| `systemPrompt` | Read the system prompt |
-| `setSystemPrompt` | Update system prompt (persisted to storage) |
-| `insight` | Read insights pushed by Main Session via integration |
-| `setInsight` | Write insights (called by the integration cycle) |
-| `memory` | Read L2 (skill description) |
-| `consolidate` | L3 to L2 distillation, triggered by the orchestration layer |
-| `trimRecords` | Trim old L3 records, keeping the most recent N |
-| `fork` | Derive a child Session with one-time context inheritance |
-| `updateMeta` | Update metadata (label, tags, metadata) |
-| `archive` | Archive the current Session |
-| `setLLM` | Dynamically replace the LLM adapter, takes effect immediately |
-
-## MainSession
-
-The global awareness layer conversation unit. Key differences from Session: uses synthesis instead of insights, and actively pushes to child Sessions via integrate.
+### stream
 
 ```typescript
-interface MainSession {
-  readonly meta: Readonly<SessionMeta>
-  send(content: string): Promise<SendResult>
-  stream(content: string): StreamResult
-  messages(options?: MessageQueryOptions): Promise<Message[]>
-  systemPrompt(): Promise<string | null>
-  setSystemPrompt(content: string): Promise<void>
-  synthesis(): Promise<string | null>
-  integrate(fn: IntegrateFn): Promise<IntegrateResult>
-  trimRecords(keepRecent: number): Promise<void>
-  updateMeta(updates: SessionMetaUpdate): Promise<void>
-  archive(): Promise<void>
-  setLLM(adapter: LLMAdapter): void
+stream(content: string): StreamResult
+```
+
+Streaming version of send. Returns `AsyncIterable<string>` for chunk-by-chunk consumption. Get the full result via `result` after the stream ends. If LLMAdapter doesn't implement `stream()`, degrades to `complete()` + single yield.
+
+```typescript
+interface StreamResult extends AsyncIterable<string> {
+  result: Promise<SendResult>
 }
 ```
 
-| Method | Description |
-|--------|-------------|
-| `send` | Assemble context (system prompt + synthesis + L3 + msg), call LLM, store L3 |
-| `stream` | Stream send |
-| `synthesis` | Read synthesis -- the output of the integration cycle |
-| `integrate` | Execute integration: collect child L2s, run IntegrateFn, save synthesis + push insights |
-
-## Factory Functions
+### messages
 
 ```typescript
-function createSession(options: CreateSessionOptions): Promise<Session>
-function loadSession(id: string, options: LoadSessionOptions): Promise<Session>
-function createMainSession(options: CreateMainSessionOptions): Promise<MainSession>
-function loadMainSession(id: string, options: LoadMainSessionOptions): Promise<MainSession>
+messages(options?: MessageQueryOptions): Promise<Message[]>
 ```
 
-### CreateSessionOptions
+Read L3 conversation records. Filter by `limit`, `offset`, `role`.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `storage` | `SessionStorage` | Storage adapter (required) |
-| `llm` | `LLMAdapter` | LLM adapter |
-| `label` | `string` | Session label |
-| `systemPrompt` | `string` | System prompt |
-| `tags` | `string[]` | Initial tags |
-| `metadata` | `Record<string, unknown>` | Initial metadata |
-| `tools` | `ToolSchema[]` | Available tool definitions |
+### systemPrompt / setSystemPrompt
 
-### LoadSessionOptions
+```typescript
+systemPrompt(): Promise<string | null>
+setSystemPrompt(content: string): Promise<void>
+```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `storage` | `SessionStorage` | Storage adapter (required) |
-| `llm` | `LLMAdapter` | LLM adapter |
-| `systemPrompt` | `string` | System prompt (overrides saved value) |
-| `tools` | `ToolSchema[]` | Available tool definitions |
+Read/update system prompt, persisted to storage.
 
-`CreateMainSessionOptions` and `LoadMainSessionOptions` share the same structure, but the `storage` field requires the `MainStorage` type.
+### insight / setInsight
 
-## Types
+```typescript
+insight(): Promise<string | null>
+setInsight(content: string): Promise<void>
+```
 
-### SessionMeta
+Read/write insight (pushed by Main Session's integration cycle). `send()` auto-clears insight after consuming it.
+
+### memory
+
+```typescript
+memory(): Promise<string | null>
+```
+
+Read L2 (skill description). Initially null, written by `consolidate()`.
+
+### consolidate
+
+```typescript
+consolidate(fn: ConsolidateFn): Promise<void>
+```
+
+Execute L3 → L2 distillation. Called by the upper layer (Scheduler) at appropriate times — Session itself doesn't trigger this.
+
+```typescript
+type ConsolidateFn = (currentMemory: string | null, messages: Message[]) => Promise<string>
+```
+
+### trimRecords
+
+```typescript
+trimRecords(keepRecent: number): Promise<void>
+```
+
+Trim old L3 records, keeping only the most recent N. Typically called after consolidate.
+
+### fork
+
+```typescript
+fork(options: ForkOptions): Promise<Session>
+```
+
+Fork a child Session. One-time context inheritance from parent, fully independent afterward.
+
+```typescript
+interface ForkOptions {
+  label: string
+  systemPrompt?: string              // omit to inherit from parent
+  context?: 'none' | 'inherit' | ForkContextFn  // context strategy, default 'none'
+  prompt?: string                    // first assistant message in child Session
+  llm?: LLMAdapter                   // override parent's LLM
+  tools?: LLMCompleteOptions['tools'] // override parent's tool list
+  tags?: string[]
+  metadata?: Record<string, unknown>
+}
+```
+
+`context` options:
+- `'none'` (default) — child starts with empty L3
+- `'inherit'` — copy all parent L3 records
+- function — `(parentRecords: Message[]) => Message[]`, custom transform
+
+### updateMeta / archive / setLLM
+
+```typescript
+updateMeta(updates: SessionMetaUpdate): Promise<void>
+archive(): Promise<void>
+setLLM(adapter: LLMAdapter): void    // hot-swap LLM, takes effect immediately
+```
+
+### meta
+
+```typescript
+readonly meta: Readonly<SessionMeta>
+```
+
+Synchronously read metadata (in-memory cache, always up-to-date).
 
 ```typescript
 interface SessionMeta {
@@ -115,92 +142,116 @@ interface SessionMeta {
   status: 'active' | 'archived'
   tags: string[]
   metadata: Record<string, unknown>
-  createdAt: string
-  updatedAt: string
+  createdAt: string    // ISO 8601
+  updatedAt: string    // ISO 8601
 }
 ```
 
-### Message
+## MainSession
+
+The global awareness layer. Key differences from Session: insight is replaced by synthesis in context, `consolidate()` is replaced by `integrate()`.
+
+### Methods shared with Session
+
+`send`, `stream`, `messages`, `systemPrompt`, `setSystemPrompt`, `trimRecords`, `updateMeta`, `archive`, `setLLM` — same signatures and behavior, but context assembly uses: `system prompt → synthesis → L3 → user message`.
+
+### synthesis
 
 ```typescript
-interface Message {
-  role: 'system' | 'user' | 'assistant' | 'tool'
-  content: string
-  toolCalls?: ToolCall[]
-  toolCallId?: string
-  timestamp?: string
-}
+synthesis(): Promise<string | null>
 ```
 
-### SendResult
+Read synthesis — the product of the integration cycle, Main Session's "global perspective".
+
+### integrate
 
 ```typescript
-interface SendResult {
-  content: string | null
-  toolCalls?: ToolCall[]
-  usage?: { promptTokens: number; completionTokens: number }
-}
+integrate(fn: IntegrateFn): Promise<IntegrateResult>
 ```
 
-### StreamResult
+Execute integration cycle: collect all child Session L2s via `getAllSessionL2s()`, call IntegrateFn to generate synthesis + insights, atomically write to storage.
 
 ```typescript
-interface StreamResult extends AsyncIterable<string> {
-  result: Promise<SendResult>
-}
-```
-
-### ConsolidateFn / IntegrateFn
-
-```typescript
-type ConsolidateFn = (currentMemory: string | null, messages: Message[]) => Promise<string>
-
 type IntegrateFn = (
   children: ChildL2Summary[],
-  currentSynthesis: string | null
+  currentSynthesis: string | null,
 ) => Promise<IntegrateResult>
-
-interface IntegrateResult {
-  synthesis: string
-  insights: Array<{ sessionId: string; content: string }>
-}
 
 interface ChildL2Summary {
   sessionId: string
   label: string
   l2: string
 }
+
+interface IntegrateResult {
+  synthesis: string
+  insights: Array<{ sessionId: string; content: string }>
+}
 ```
+
+### Methods MainSession does NOT have
+
+- No `insight()` / `setInsight()` — Main Session pushes insights, doesn't receive them
+- No `memory()` — replaced by `synthesis()`
+- No `consolidate()` — replaced by `integrate()`
+- No `fork()` — child Session creation is handled by the orchestration layer via `forkSession()`
+
+## Factory Functions
+
+### createSession
+
+```typescript
+async function createSession(options: CreateSessionOptions): Promise<Session>
+```
+
+Create a new Session, auto-generating an ID and writing to storage.
+
+```typescript
+interface CreateSessionOptions {
+  storage: SessionStorage     // required
+  llm?: LLMAdapter
+  label?: string
+  systemPrompt?: string
+  tags?: string[]
+  metadata?: Record<string, unknown>
+  tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
+}
+```
+
+### loadSession
+
+```typescript
+async function loadSession(id: string, options: LoadSessionOptions): Promise<Session | null>
+```
+
+Load an existing Session from storage. Returns null if not found.
+
+```typescript
+interface LoadSessionOptions {
+  storage: SessionStorage     // required
+  llm?: LLMAdapter
+  systemPrompt?: string
+  tools?: Array<{ name: string; description: string; inputSchema: Record<string, unknown> }>
+}
+```
+
+### createMainSession
+
+```typescript
+async function createMainSession(options: CreateMainSessionOptions): Promise<MainSession>
+```
+
+Create a Main Session. Requires `MainStorage` (not `SessionStorage`).
+
+### loadMainSession
+
+```typescript
+async function loadMainSession(id: string, options: LoadMainSessionOptions): Promise<MainSession | null>
+```
+
+Load an existing Main Session from storage.
 
 ## LLM Adapters
-
-### High-level Factories (Recommended)
-
-```typescript
-function createClaude(options: ClaudeOptions): LLMAdapter
-function createGPT(options: GPTOptions): LLMAdapter
-```
-
-| Factory | Supported Models |
-|---------|-----------------|
-| `createClaude` | `claude-opus-4-20250514`, `claude-sonnet-4-20250514`, `claude-haiku-4-5-20251001` |
-| `createGPT` | `gpt-4o`, `gpt-4o-mini`, `gpt-4.1`, `gpt-4.1-mini`, `gpt-4.1-nano`, `o3`, `o3-mini`, `o4-mini` |
-
-### Low-level Factories (Custom Models)
-
-```typescript
-function createOpenAICompatibleAdapter(options: OpenAICompatibleOptions): LLMAdapter
-function createAnthropicAdapter(options: AnthropicAdapterOptions): LLMAdapter
-```
-
-| Option | Common Fields |
-|--------|--------------|
-| `apiKey` | API key |
-| `model` | Model name |
-| `maxContextTokens` | Context window size (in tokens) |
-| `baseURL` | API endpoint |
-
-`OpenAICompatibleOptions` additionally supports `extraBody` for provider-specific parameters.
 
 ### LLMAdapter Interface
 
@@ -212,95 +263,173 @@ interface LLMAdapter {
 }
 ```
 
+- `complete` — Required. Send message array, return full response
+- `stream` — Optional. Session auto-degrades to complete + single yield if not implemented
+- `maxContextTokens` — Used for auto-compression decisions (80% threshold)
+
+### createClaude
+
+```typescript
+function createClaude(options: ClaudeOptions): LLMAdapter
+```
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `model` | `ClaudeModel` | `'claude-opus-4-20250514'` \| `'claude-sonnet-4-20250514'` \| `'claude-haiku-4-5-20251001'` |
+| `apiKey` | string | Anthropic API Key |
+| `baseURL` | string? | Custom endpoint |
+
+All models auto-set maxContextTokens to 200,000. Requires `@anthropic-ai/sdk`.
+
+### createGPT
+
+```typescript
+function createGPT(options: GPTOptions): LLMAdapter
+```
+
+| Param | Type | Description |
+|-------|------|-------------|
+| `model` | `GPTModel` | `'gpt-4o'` \| `'gpt-4o-mini'` \| `'gpt-4.1'` \| `'gpt-4.1-mini'` \| `'gpt-4.1-nano'` \| `'o3'` \| `'o3-mini'` \| `'o4-mini'` |
+| `apiKey` | string | OpenAI API Key |
+| `baseURL` | string? | Custom endpoint |
+
+maxContextTokens auto-set by model (gpt-4o: 128K, gpt-4.1 series: ~1M, o3/o4: 200K). Requires `openai`.
+
+### createOpenAICompatibleAdapter
+
+```typescript
+function createOpenAICompatibleAdapter(options: OpenAICompatibleOptions): LLMAdapter
+```
+
+Generic OpenAI-protocol adapter for MiniMax, DeepSeek, etc. Requires manual `maxContextTokens` and `baseURL`. Supports `extraBody` for vendor-specific parameters.
+
+### createAnthropicAdapter
+
+```typescript
+function createAnthropicAdapter(options: AnthropicAdapterOptions): LLMAdapter
+```
+
+Low-level Anthropic protocol adapter. Unlike `createClaude`, requires manual `model` and `maxContextTokens` — suitable for custom model names.
+
+## Message
+
+```typescript
+interface Message {
+  role: 'system' | 'user' | 'assistant' | 'tool'
+  content: string
+  toolCalls?: ToolCall[]      // assistant messages only
+  toolCallId?: string         // tool messages only
+  timestamp?: string          // ISO 8601
+}
+
+interface ToolCall {
+  id: string
+  name: string
+  input: Record<string, unknown>
+}
+```
+
 ## Storage Interfaces
 
 ### SessionStorage
 
-Data operations interface for a single Session. See the [Storage Adapters](/en/docs/guides/storage-adapters) for details.
+Storage interface for regular Sessions.
 
 ```typescript
 interface SessionStorage {
   getSession(id: string): Promise<SessionMeta | null>
   putSession(session: SessionMeta): Promise<void>
+
   appendRecord(sessionId: string, record: Message): Promise<void>
   listRecords(sessionId: string, options?: ListRecordsOptions): Promise<Message[]>
   trimRecords(sessionId: string, keepRecent: number): Promise<void>
+
   getSystemPrompt(sessionId: string): Promise<string | null>
   putSystemPrompt(sessionId: string, content: string): Promise<void>
+
   getInsight(sessionId: string): Promise<string | null>
   putInsight(sessionId: string, content: string): Promise<void>
   clearInsight(sessionId: string): Promise<void>
+
   getMemory(sessionId: string): Promise<string | null>
   putMemory(sessionId: string, content: string): Promise<void>
+
   transaction<T>(fn: (tx: SessionStorage) => Promise<T>): Promise<T>
 }
 ```
 
 ### MainStorage
 
-Extends SessionStorage with batch L2 collection, topology tree operations, Session listing, and global key-value storage.
+Storage interface for Main Session + orchestration layer, extends SessionStorage.
 
 ```typescript
 interface MainStorage extends SessionStorage {
   getAllSessionL2s(): Promise<ChildL2Summary[]>
   listSessions(filter?: SessionFilter): Promise<SessionMeta[]>
+
   putNode(node: TopologyNode): Promise<void>
   getChildren(parentId: string): Promise<TopologyNode[]>
   removeNode(nodeId: string): Promise<void>
+
   getGlobal(key: string): Promise<unknown>
   putGlobal(key: string, value: unknown): Promise<void>
 }
 ```
 
-## InMemoryStorageAdapter
-
-In-memory storage implementation satisfying the `MainStorage` interface. Suitable for testing and rapid prototyping.
+### InMemoryStorageAdapter
 
 ```typescript
-import { InMemoryStorageAdapter } from '@stello-ai/session'
-
-const storage = new InMemoryStorageAdapter()
+class InMemoryStorageAdapter implements MainStorage
 ```
+
+Complete in-memory storage implementation with all MainStorage methods. Great for getting started and testing — data is lost on restart. Use `@stello-ai/server`'s PostgreSQL implementation for production.
 
 ## Tool Definition
 
-### tool() Factory
-
-Define type-safe tools using Zod schemas.
+### tool
 
 ```typescript
-import { z } from 'zod'
-import { tool } from '@stello-ai/session'
+function tool<S extends ZodRawShape>(
+  name: string,
+  description: string,
+  inputSchema: S,
+  execute: (input: z.infer<z.ZodObject<S>>) => Promise<CallToolResult>,
+  extras?: { annotations?: ToolAnnotations },
+): Tool<S>
+```
 
-const myTool = tool(
-  'my_tool',
-  'Tool description',
-  { input: z.string() },
-  async (args) => ({ output: args.input })
+Zod-schema-based tool definition factory. Example:
+
+```typescript
+import { tool } from '@stello-ai/session'
+import { z } from 'zod'
+
+const searchTool = tool(
+  'search',
+  'Search the knowledge base',
+  { query: z.string().describe('Search keywords') },
+  async (input) => {
+    const results = await search(input.query)
+    return { output: results }
+  },
 )
 ```
 
 ### createSessionTool
 
-Create the built-in Session management tool.
-
 ```typescript
-import { createSessionTool } from '@stello-ai/session'
+function createSessionTool(getParent: () => Session): Tool
 ```
 
-### Tool Interface
+Built-in `stello_create_session` tool. Calls `session.fork()` to create a child Session.
+
+Input: `{ label: string, systemPrompt?: string, prompt?: string }`
+
+Output: `{ sessionId: string, label: string }`
+
+## Error Types
 
 ```typescript
-interface Tool<S extends ZodRawShape = ZodRawShape> {
-  name: string
-  description: string
-  inputSchema: z.ZodObject<S>
-  execute: (input: z.infer<z.ZodObject<S>>) => Promise<CallToolResult>
-  annotations?: ToolAnnotations
-}
-
-interface CallToolResult<T = unknown> {
-  output: T
-  isError?: boolean
-}
+class SessionArchivedError extends Error  // thrown when sending to an archived Session
+class NotImplementedError extends Error    // thrown when calling an unimplemented method
 ```

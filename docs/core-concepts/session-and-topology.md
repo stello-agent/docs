@@ -45,6 +45,19 @@ Main Session 是拓扑树的根节点，它的角色是 **SKILL Caller**：读�
 
 Main Session **只读 L2，不读子 Session 的 L3**。这是核心约束——Caller 看接口，不看实现。
 
+### 为什么 Main Session 是唯一的中枢？
+
+一棵 Session 树对应一个用户。Main Session 是与用户距离最近的全局意识层，掌握整棵树的视图；每个子 Session 是某一个对话方向的深入讨论。用户在不同 Session 之间通常是串行切换的。
+
+子 Session 之间没有直接通信——所有跨分支信息都经由 Main Session 中转。这种 MPSC（多生产者单消费者）模式确保信息在传播前经过统一的认知层过滤和整合，而不是在子 Session 之间形成难以追踪的网状依赖。
+
+### 拓扑形态：扁平与树状
+
+当前实现采用 Main Session + 扁平子 Session 的模式。未来计划支持树状拓扑——两种形态适用于不同场景：
+
+- **扁平** — Main Session 直接掌握所有子 Session 的 L2，全局关联度高。适合 brainstorm、规划等需要跨方向关联的场景。
+- **树状** — Integration 逐层进行，每层只看直接子节点的 L2。信息逐层提炼，不同子树之间天然隔离。适合边界清晰的结构化任务，如 OKR 分解。
+
 ## 拓扑树：TopologyNode
 
 Session 不知道树，那谁维护树？答案是 **TopologyNode**——一个独立于 Session 的轻量数据结构：

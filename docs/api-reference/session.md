@@ -216,7 +216,7 @@ interface LLMAdapter {
 
 ### SessionStorage
 
-单个 Session 的数据操作接口。详细说明参阅[存储指南](/docs/guide/storage)。
+单个 Session 的数据操作接口。详细说明参阅[存储适配器](/docs/guides/storage-adapters)。
 
 ```typescript
 interface SessionStorage {

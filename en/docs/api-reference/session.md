@@ -216,7 +216,7 @@ interface LLMAdapter {
 
 ### SessionStorage
 
-Data operations interface for a single Session. See the [Storage Guide](/en/docs/guide/storage) for details.
+Data operations interface for a single Session. See the [Storage Adapters](/en/docs/guides/storage-adapters) for details.
 
 ```typescript
 interface SessionStorage {

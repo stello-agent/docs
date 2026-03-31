@@ -89,7 +89,7 @@ const server = createStelloServer(pool, {
 
 ## HTTP Endpoints
 
-The server exposes HTTP endpoints for managing Sessions and conversations. See the [API Reference](/en/api/) for complete details.
+The server exposes HTTP endpoints for managing Sessions and conversations. See the [API Reference](/en/docs/api-reference/server) for complete details.
 
 Key endpoints include:
 - Create/get Sessions

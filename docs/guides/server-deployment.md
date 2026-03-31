@@ -89,7 +89,7 @@ const server = createStelloServer(pool, {
 
 ## HTTP 端点
 
-Server 暴露的 HTTP 端点用于管理 Session 和对话。详细的 API 参考请参见 [API 文档](/api/)。
+Server 暴露的 HTTP 端点用于管理 Session 和对话。详细的 API 参考请参见 [API 参考](/docs/api-reference/server)。
 
 主要端点包括：
 - 创建/获取 Session

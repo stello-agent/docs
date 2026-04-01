@@ -186,7 +186,7 @@ export default defineConfig({
 			light: '/stello_logo.svg',
 			dark: '/stello_logo_dark.svg',
 		},
-		logoLink: 'https://stello-agent.com',
+		logoLink: { link: 'https://stello-agent.com', target: '_self' },
 
 		socialLinks: [
 			{ icon: 'github', link: 'https://github.com/stello-agent/stello' },

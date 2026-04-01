@@ -139,7 +139,7 @@ export default defineConfig({
 	base: '/docs/',
 	cleanUrls: true,
 	head: [
-		['link', { rel: 'icon', type: 'image/svg+xml', href: '/stello_logo.svg' }],
+		['link', { rel: 'icon', type: 'image/svg+xml', href: '/docs/stello_logo.svg' }],
 	],
 
 	locales: {

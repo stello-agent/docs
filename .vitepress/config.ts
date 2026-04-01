@@ -136,6 +136,7 @@ const enSidebar = [
 
 export default defineConfig({
   title: 'Stello',
+  cleanUrls: true,
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/stello_logo.svg' }],
   ],

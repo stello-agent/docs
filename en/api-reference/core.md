@@ -1,6 +1,6 @@
 # @stello-ai/core
 
-编排层核心包，提供 StelloAgent 顶层对象和 Engine / Scheduler / Orchestrator 体系。
+The core orchestration package providing the StelloAgent top-level object and the Engine / Scheduler / Orchestrator system.
 
 ## createStelloAgent
 
@@ -8,9 +8,9 @@
 function createStelloAgent(config: StelloAgentConfig): StelloAgent
 ```
 
-创建 StelloAgent 实例。配置详情参阅[配置参考](/docs/api-reference/core-configuration)。
+Creates a StelloAgent instance. See [Configuration Reference](/en/api-reference/core-configuration) for config details.
 
-## StelloAgent 方法
+## StelloAgent Methods
 
 ### enterSession
 
@@ -18,7 +18,7 @@ function createStelloAgent(config: StelloAgentConfig): StelloAgent
 enterSession(sessionId: string): Promise<BootstrapResult>
 ```
 
-进入指定 Session，执行 bootstrap（读取上下文、组装记忆）。
+Enter a Session, executing bootstrap (reading context, assembling memory).
 
 ```typescript
 interface BootstrapResult {
@@ -33,7 +33,7 @@ interface BootstrapResult {
 turn(sessionId: string, input: string, options?: TurnRunnerOptions): Promise<EngineTurnResult>
 ```
 
-在指定 Session 上运行一轮对话，包含完整的 tool call 循环。同一 Session 的 turn 调用是串行的（排队执行），不同 Session 之间并行。
+Run a full conversation turn on a Session, including the complete tool call loop. Turns on the same Session are serialized (queued); different Sessions run in parallel.
 
 ```typescript
 interface EngineTurnResult {
@@ -41,10 +41,10 @@ interface EngineTurnResult {
 }
 
 interface TurnRunnerResult {
-  finalContent: string | null   // LLM 最终文本输出
-  toolRoundCount: number         // tool call 循环轮数
-  toolCallsExecuted: number      // 执行的 tool call 总数
-  rawResponse: string            // LLM 原始响应
+  finalContent: string | null   // LLM final text output
+  toolRoundCount: number         // tool call loop rounds
+  toolCallsExecuted: number      // total tool calls executed
+  rawResponse: string            // LLM raw response
 }
 ```
 
@@ -54,7 +54,7 @@ interface TurnRunnerResult {
 stream(sessionId: string, input: string, options?: TurnRunnerOptions): Promise<EngineStreamResult>
 ```
 
-流式运行一轮对话。返回 `AsyncIterable<string>` 用于逐 chunk 消费，通过 `result` 属性获取最终结果。
+Run a streaming conversation turn. Returns an `AsyncIterable<string>` for chunk-by-chunk consumption, with a `result` property for the final result.
 
 ```typescript
 interface EngineStreamResult extends AsyncIterable<string> {
@@ -68,7 +68,7 @@ interface EngineStreamResult extends AsyncIterable<string> {
 leaveSession(sessionId: string): Promise<{ sessionId: string }>
 ```
 
-离开指定 Session，触发调度（如 onLeave consolidation）。
+Leave a Session, triggering scheduling (e.g., onLeave consolidation).
 
 ### forkSession
 
@@ -79,7 +79,7 @@ forkSession(
 ): Promise<TopologyNode>
 ```
 
-从指定 Session 派生子 Session。实际挂载位置由 `OrchestrationStrategy.resolveForkParent()` 决定。
+Fork a child Session. The actual parent node is determined by `OrchestrationStrategy.resolveForkParent()`.
 
 ```typescript
 interface CreateSessionOptions {
@@ -97,7 +97,7 @@ interface CreateSessionOptions {
 archiveSession(sessionId: string): Promise<{ sessionId: string }>
 ```
 
-归档指定 Session，触发调度（如 onArchive consolidation）。
+Archive a Session, triggering scheduling (e.g., onArchive consolidation).
 
 ### attachSession
 
@@ -105,7 +105,7 @@ archiveSession(sessionId: string): Promise<{ sessionId: string }>
 attachSession(sessionId: string, holderId: RuntimeHolderId): Promise<OrchestratorEngine>
 ```
 
-显式附着一个 Session runtime。常用于 WebSocket 连接建立时，保持 Engine 活跃不被回收。
+Explicitly attach a Session runtime. Commonly used when a WebSocket connection is established to keep the Engine active.
 
 ### detachSession
 
@@ -113,7 +113,7 @@ attachSession(sessionId: string, holderId: RuntimeHolderId): Promise<Orchestrato
 detachSession(sessionId: string, holderId: RuntimeHolderId): Promise<void>
 ```
 
-释放一个 Session runtime 持有者。常用于 WebSocket 断开时。引用归零后根据 `recyclePolicy.idleTtlMs` 决定是否回收。
+Release a Session runtime holder. Commonly used when a WebSocket disconnects. When the reference count reaches zero, recycling behavior depends on `recyclePolicy.idleTtlMs`.
 
 ### hasActiveEngine
 
@@ -121,7 +121,7 @@ detachSession(sessionId: string, holderId: RuntimeHolderId): Promise<void>
 hasActiveEngine(sessionId: string): boolean
 ```
 
-检查当前是否已激活某个 Session 的 Engine。
+Check whether an Engine is currently active for a Session.
 
 ### getEngineRefCount
 
@@ -129,7 +129,7 @@ hasActiveEngine(sessionId: string): boolean
 getEngineRefCount(sessionId: string): number
 ```
 
-获取某个 Session 的 Engine 引用计数。
+Get the Engine reference count for a Session.
 
 ### updateConfig
 
@@ -137,7 +137,7 @@ getEngineRefCount(sessionId: string): number
 updateConfig(patch: StelloAgentHotConfig): void
 ```
 
-热更新运行时配置，无需重建 Agent。
+Hot-update runtime configuration without rebuilding the Agent.
 
 ```typescript
 interface StelloAgentHotConfig {
@@ -147,21 +147,21 @@ interface StelloAgentHotConfig {
 }
 ```
 
-## 公开属性
+## Public Properties
 
-| 属性 | 类型 | 说明 |
-|------|------|------|
-| `config` | `StelloAgentConfig` | 归一化后的顶层配置 |
-| `sessions` | `SessionTree` | 拓扑树查询接口 |
-| `memory` | `MemoryEngine` | 记忆引擎读写接口 |
+| Property | Type | Description |
+|----------|------|-------------|
+| `config` | `StelloAgentConfig` | Normalized top-level configuration |
+| `sessions` | `SessionTree` | Topology tree query interface |
+| `memory` | `MemoryEngine` | Memory engine read/write interface |
 
-## 核心类
+## Core Classes
 
-除 StelloAgent 外，core 包还导出以下可独立使用的类：
+Beyond StelloAgent, the core package also exports these independently usable classes:
 
 ### Scheduler
 
-调度器，控制 consolidation / integration 的触发时机。
+Controls consolidation / integration trigger timing.
 
 ```typescript
 class Scheduler {
@@ -177,7 +177,7 @@ class Scheduler {
 
 ### TurnRunner
 
-Tool call 循环执行器。
+Tool call loop executor.
 
 ```typescript
 class TurnRunner {
@@ -189,7 +189,7 @@ class TurnRunner {
 
 ### SplitGuard
 
-拆分保护，防止 Session 过早或过频繁地拆分。
+Split protection, prevents Sessions from splitting too early or too frequently.
 
 ```typescript
 class SplitGuard {
@@ -203,7 +203,7 @@ class SplitGuard {
 
 ### SkillRouterImpl
 
-Skill 注册表实现。
+Skill registry implementation.
 
 ```typescript
 class SkillRouterImpl implements SkillRouter {
@@ -215,7 +215,7 @@ class SkillRouterImpl implements SkillRouter {
 
 ### SessionTreeImpl
 
-文件系统上的拓扑树实现。
+File-system based topology tree implementation.
 
 ```typescript
 class SessionTreeImpl implements SessionTree {
@@ -237,7 +237,7 @@ class SessionTreeImpl implements SessionTree {
 
 ### NodeFileSystemAdapter
 
-Node.js 文件系统适配器。
+Node.js file system adapter.
 
 ```typescript
 class NodeFileSystemAdapter implements FileSystemAdapter {
@@ -254,7 +254,7 @@ class NodeFileSystemAdapter implements FileSystemAdapter {
 }
 ```
 
-### 编排策略
+### Orchestration Strategies
 
 ```typescript
 class MainSessionFlatStrategy implements OrchestrationStrategy {
@@ -262,23 +262,23 @@ class MainSessionFlatStrategy implements OrchestrationStrategy {
 }
 
 class HierarchicalOkrStrategy implements OrchestrationStrategy {
-  resolveForkParent(): Promise<string>  // 尚未实现
+  resolveForkParent(): Promise<string>  // not yet implemented
 }
 ```
 
-### Skill Tool 工具函数
+### Skill Tool Functions
 
-Engine 在有 skill 注册时自动使用这些函数，通常不需要手动调用。
+Engine automatically uses these when skills are registered. Typically not called manually.
 
 ```typescript
-// 根据已注册 skills 生成 activate_skill tool 定义
+// Generate activate_skill tool definition from registered skills
 function createSkillToolDefinition(router: SkillRouter): ToolDefinition
 
-// 执行 skill 激活：按 name 查找并返回 content
+// Execute skill activation: find by name and return content
 function executeSkillTool(router: SkillRouter, args: { name: string }): ToolExecutionResult
 ```
 
-### LLM 默认实现
+### LLM Defaults
 
 ```typescript
 function createDefaultConsolidateFn(prompt: string, llm: LLMCallFn): SessionCompatibleConsolidateFn
@@ -290,45 +290,45 @@ const DEFAULT_CONSOLIDATE_PROMPT: string
 const DEFAULT_INTEGRATE_PROMPT: string
 ```
 
-### Session Runtime 适配器
+### Session Runtime Adapters
 
-将 `@stello-ai/session` 的 Session / MainSession 适配为 core Engine 可消费的接口。
+Adapt `@stello-ai/session` Session / MainSession into core Engine-consumable interfaces.
 
 ```typescript
-// 适配 Session → EngineRuntimeSession
+// Adapt Session → EngineRuntimeSession
 function adaptSessionToEngineRuntime(
   session: SessionCompatible,
   options: SessionRuntimeAdapterOptions,
 ): Promise<EngineRuntimeSession>
 
-// 适配 MainSession → SchedulerMainSession
+// Adapt MainSession → SchedulerMainSession
 function adaptMainSessionToSchedulerMainSession(
   mainSession: MainSessionCompatible,
   options: MainSessionAdapterOptions,
 ): SchedulerMainSession
 
-// Session send 结果的默认序列化器
+// Default serializer for Session send results
 function serializeSessionSendResult(result: SessionCompatibleSendResult): string
 
-// Session send 结果的默认 ToolCallParser
+// Default ToolCallParser for Session send results
 const sessionSendResultParser: ToolCallParser
 
-// SessionCompatible tool calls → core ToolCall 格式转换
+// Convert SessionCompatible tool calls to core ToolCall format
 function toCoreToolCalls(toolCalls): Array<{ id: string; name: string; args: Record<string, unknown> }>
 ```
 
-## 从 @stello-ai/session 重新导出
+## Re-exports from @stello-ai/session
 
-`@stello-ai/core` 重新导出了 session 包的常用接口，core 用户无需额外安装 `@stello-ai/session`。
+`@stello-ai/core` re-exports commonly used interfaces from the session package. Core users don't need to install `@stello-ai/session` separately.
 
-完整的接口说明和用法请参阅 [@stello-ai/session API 参考](/docs/api-reference/session)。
+For complete interface documentation and usage, see the [@stello-ai/session API Reference](/en/api-reference/session).
 
-**工厂函数**：`createSession`、`loadSession`、`createMainSession`、`loadMainSession`
+**Factory functions**: `createSession`, `loadSession`, `createMainSession`, `loadMainSession`
 
-**LLM 适配器**：`createClaude`、`createGPT`、`createOpenAICompatibleAdapter`、`createAnthropicAdapter`
+**LLM adapters**: `createClaude`, `createGPT`, `createOpenAICompatibleAdapter`, `createAnthropicAdapter`
 
-**存储**：`InMemoryStorageAdapter`
+**Storage**: `InMemoryStorageAdapter`
 
-**工具**：`tool`、`createSessionTool`
+**Tools**: `tool`, `createSessionTool`
 
-**类型**：`Session`、`MainSession`、`SendResult`、`StreamResult`、`Message`、`ToolCall`、`LLMAdapter`、`LLMResult`、`LLMChunk`、`LLMCompleteOptions`、`SessionStorage`、`MainStorage`、`ConsolidateFn`、`IntegrateFn`、`IntegrateResult`、`ChildL2Summary` 等
+**Types**: `Session`, `MainSession`, `SendResult`, `StreamResult`, `Message`, `ToolCall`, `LLMAdapter`, `LLMResult`, `LLMChunk`, `LLMCompleteOptions`, `SessionStorage`, `MainStorage`, `ConsolidateFn`, `IntegrateFn`, `IntegrateResult`, `ChildL2Summary`, etc.

@@ -44,7 +44,7 @@ The orchestration layer handles all of this: driving tool call loops, deciding w
 
 | Topic | Description |
 |-------|-------------|
-| [Three-Layer Memory](/en/docs/core-concepts/three-layer-memory) | Detailed L3/L2/L1 semantics, context assembly rules, zero-conversation-overhead design |
-| [Session & Topology](/en/docs/core-concepts/session-and-topology) | Session independence, decoupling from topology, MainSession's special role |
-| [Consolidation & Integration](/en/docs/core-concepts/consolidation-and-integration) | Consolidation function design, scheduling triggers, ConsolidateFn/IntegrateFn pairing |
-| [Orchestration Strategy](/en/docs/core-concepts/orchestration-strategy) | Flat vs hierarchical trade-offs, scheduler configuration, Engine responsibilities |
+| [Three-Layer Memory](/en/core-concepts/three-layer-memory) | Detailed L3/L2/L1 semantics, context assembly rules, zero-conversation-overhead design |
+| [Session & Topology](/en/core-concepts/session-and-topology) | Session independence, decoupling from topology, MainSession's special role |
+| [Consolidation & Integration](/en/core-concepts/consolidation-and-integration) | Consolidation function design, scheduling triggers, ConsolidateFn/IntegrateFn pairing |
+| [Orchestration Strategy](/en/core-concepts/orchestration-strategy) | Flat vs hierarchical trade-offs, scheduler configuration, Engine responsibilities |

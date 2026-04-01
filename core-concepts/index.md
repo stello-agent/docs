@@ -44,7 +44,7 @@ Session 树可以按不同策略组织：
 
 | 主题 | 说明 |
 |------|------|
-| [三层记忆模型](/docs/core-concepts/three-layer-memory) | L3/L2/L1 的详细语义、上下文组装规则、零对话开销的设计 |
-| [Session 与拓扑](/docs/core-concepts/session-and-topology) | Session 的独立性、与拓扑树的解耦、MainSession 的特殊角色 |
-| [Consolidation 与 Integration](/docs/core-concepts/consolidation-and-integration) | 提炼函数的设计、调度时机、ConsolidateFn 与 IntegrateFn 的配对关系 |
-| [编排策略](/docs/core-concepts/orchestration-strategy) | 平铺 vs 层级的取舍、调度策略配置、Engine 的职责边界 |
+| [三层记忆模型](/core-concepts/three-layer-memory) | L3/L2/L1 的详细语义、上下文组装规则、零对话开销的设计 |
+| [Session 与拓扑](/core-concepts/session-and-topology) | Session 的独立性、与拓扑树的解耦、MainSession 的特殊角色 |
+| [Consolidation 与 Integration](/core-concepts/consolidation-and-integration) | 提炼函数的设计、调度时机、ConsolidateFn 与 IntegrateFn 的配对关系 |
+| [编排策略](/core-concepts/orchestration-strategy) | 平铺 vs 层级的取舍、调度策略配置、Engine 的职责边界 |

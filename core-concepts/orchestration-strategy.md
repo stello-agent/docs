@@ -52,7 +52,7 @@ fork 时新 Session 挂在发起 fork 的 Session 下，自然形成层级结构
 
 ## Scheduler：调度配置
 
-Scheduler 控制 consolidation 和 integration 的触发时机，详见 [Consolidation 与 Integration](/docs/core-concepts/consolidation-and-integration)。
+Scheduler 控制 consolidation 和 integration 的触发时机，详见 [Consolidation 与 Integration](/core-concepts/consolidation-and-integration)。
 
 常见配置模式：
 

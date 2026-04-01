@@ -170,4 +170,4 @@ DevTools provides:
 
 ## Next Steps
 
-Continue to [Core Concepts](/en/docs/core-concepts/) to understand Stello's design philosophy and architecture.
+Continue to [Core Concepts](/en/core-concepts/) to understand Stello's design philosophy and architecture.

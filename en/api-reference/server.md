@@ -343,4 +343,4 @@ PostgreSQL storage adapter implementations. These are available for direct use b
 | `PgSessionTree` | `SessionTree` | PG storage for the topology tree |
 | `PgMemoryEngine` | `MemoryEngine` | PG storage for the memory engine |
 
-All constructors take `(client: pg.Pool | pg.PoolClient, spaceId: string)`. For interface details, see [@stello-ai/session](/en/docs/api-reference/session).
+All constructors take `(client: pg.Pool | pg.PoolClient, spaceId: string)`. For interface details, see [@stello-ai/session](/en/api-reference/session).

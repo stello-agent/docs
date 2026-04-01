@@ -170,4 +170,4 @@ DevTools 提供：
 
 ## 下一步
 
-接下来建议阅读 [核心概念](/docs/core-concepts/)，理解 Stello 的设计理念和架构。
+接下来建议阅读 [核心概念](/core-concepts/)，理解 Stello 的设计理念和架构。

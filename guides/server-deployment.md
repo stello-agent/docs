@@ -1,19 +1,19 @@
-# Server Deployment
+# 服务端部署
 
-`@stello-ai/server` wraps the Stello orchestration engine as an HTTP service with PostgreSQL persistence, multi-tenancy support, and automatic database migration.
+`@stello-ai/server` 将 Stello 编排引擎包装为 HTTP 服务，提供 PostgreSQL 持久化、多租户支持和自动数据库迁移。
 
-## Installation
+## 安装
 
 ```bash
 pnpm add @stello-ai/server
 ```
 
-## Prerequisites
+## 前置要求
 
 - Node.js 18+
 - PostgreSQL 14+
 
-## Quick Start
+## 快速开始
 
 ```typescript
 import { createStelloServer, migrate } from '@stello-ai/server'
@@ -23,32 +23,32 @@ const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
 })
 
-// Run database migrations automatically
+// 自动执行数据库迁移
 await migrate(pool)
 
-// Create the server
+// 创建服务器
 const server = createStelloServer(pool, {
   buildConfig: (spaceId) => ({
     llm: createClaude({
       apiKey: process.env.ANTHROPIC_API_KEY,
       model: 'claude-sonnet-4-20250514',
     }),
-    systemPrompt: 'You are a helpful assistant.',
+    systemPrompt: '你是一个智能助手。',
     tools: [createSessionTool],
     consolidate: myConsolidateFn,
     integrate: myIntegrateFn,
   }),
 })
 
-// Start the HTTP server
+// 启动 HTTP 服务
 server.listen(3000, () => {
   console.log('Stello server running on port 3000')
 })
 ```
 
-## Database Migration
+## 数据库迁移
 
-`migrate()` automatically creates the required tables and can be safely called on every startup (idempotent):
+`migrate()` 会自动创建所需的数据表，可在应用启动时安全调用（幂等操作）：
 
 ```typescript
 import { migrate } from '@stello-ai/server'
@@ -58,21 +58,21 @@ await migrate(pool)
 
 ## AgentPoolOptions
 
-The second argument to `createStelloServer` is `AgentPoolOptions`, with `buildConfig` as its core:
+`createStelloServer` 的第二个参数是 `AgentPoolOptions`，核心是 `buildConfig` 函数：
 
 ```typescript
 interface AgentPoolOptions {
-  /** Build Agent config based on spaceId */
+  /** 根据 spaceId 构建 Agent 配置 */
   buildConfig: (spaceId: string) => AgentConfig
 }
 ```
 
-`buildConfig` receives a `spaceId` (tenant identifier) and returns the Agent configuration for that tenant. This allows different LLMs, prompts, or tools per tenant:
+`buildConfig` 接收 `spaceId`（租户标识），返回该租户的 Agent 配置。这允许你为不同租户使用不同的 LLM、prompt 或工具：
 
 ```typescript
 const server = createStelloServer(pool, {
   buildConfig: (spaceId) => {
-    // Different config per tenant
+    // 根据租户选择不同配置
     if (spaceId === 'premium') {
       return {
         llm: createClaude({ model: 'claude-opus-4-20250514' }),
@@ -87,29 +87,29 @@ const server = createStelloServer(pool, {
 })
 ```
 
-## HTTP Endpoints
+## HTTP 端点
 
-The server exposes HTTP endpoints for managing Sessions and conversations. See the [API Reference](/en/docs/api-reference/server) for complete details.
+Server 暴露的 HTTP 端点用于管理 Session 和对话。详细的 API 参考请参见 [API 参考](/api-reference/server)。
 
-Key endpoints include:
-- Create/get Sessions
-- Send messages (turn)
-- Get topology tree
-- Get conversation history
+主要端点包括：
+- 创建/获取 Session
+- 发送消息（turn）
+- 获取拓扑树
+- 获取对话历史
 
-## Multi-Tenancy via Spaces
+## 多租户（Spaces）
 
-Stello Server implements multi-tenancy through the Spaces concept. Each Space is an independent Agent instance with its own Session topology and storage:
+Stello Server 通过 Spaces 概念实现多租户。每个 Space 是一个独立的 Agent 实例，拥有独立的 Session 拓扑和存储空间：
 
 ```typescript
-// Different spaceIds map to different Agent instances
-// POST /spaces/tenant-a/sessions → create Session in tenant-a space
-// POST /spaces/tenant-b/sessions → create Session in tenant-b space
+// 不同的 spaceId 对应不同的 Agent 实例
+// POST /spaces/tenant-a/sessions → 在 tenant-a 空间创建 Session
+// POST /spaces/tenant-b/sessions → 在 tenant-b 空间创建 Session
 ```
 
-## Docker Compose Deployment
+## Docker Compose 部署
 
-Here is a basic Docker Compose configuration:
+以下是一个基础的 Docker Compose 配置示例：
 
 ```yaml
 version: '3.8'
@@ -140,7 +140,7 @@ volumes:
   pgdata:
 ```
 
-Corresponding Dockerfile:
+对应的 Dockerfile：
 
 ```dockerfile
 FROM node:20-slim
@@ -151,9 +151,9 @@ COPY dist ./dist
 CMD ["node", "dist/server.js"]
 ```
 
-## Notes
+## 注意事项
 
-- `migrate()` is idempotent and safe to call on every startup
-- `buildConfig` is called each time a new Agent instance is created -- keep it pure
-- The PostgreSQL connection pool (`pg.Pool`) is managed by the application, not the server
-- In production, configure PostgreSQL pool size and timeout parameters appropriately
+- `migrate()` 是幂等的，可以在每次启动时安全调用
+- `buildConfig` 在每次创建新 Agent 实例时调用，保持函数纯净
+- PostgreSQL 连接池（`pg.Pool`）由应用层管理，Server 不负责生命周期
+- 生产环境建议配置 PostgreSQL 连接池大小和超时参数

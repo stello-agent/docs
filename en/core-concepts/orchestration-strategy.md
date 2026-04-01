@@ -52,7 +52,7 @@ When forking, the new Session attaches under the Session that initiated the fork
 
 ## Scheduler: Scheduling Configuration
 
-Scheduler controls consolidation and integration trigger timing. See [Consolidation & Integration](/en/docs/core-concepts/consolidation-and-integration) for details.
+Scheduler controls consolidation and integration trigger timing. See [Consolidation & Integration](/en/core-concepts/consolidation-and-integration) for details.
 
 Common configuration patterns:
 

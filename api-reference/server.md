@@ -343,4 +343,4 @@ PostgreSQL 存储适配器实现。可直接使用，也会由 `AgentPool` 通�
 | `PgSessionTree` | `SessionTree` | 拓扑树的 PG 存储 |
 | `PgMemoryEngine` | `MemoryEngine` | 记忆引擎的 PG 存储 |
 
-所有构造函数签名为 `(client: pg.Pool | pg.PoolClient, spaceId: string)`。接口详情参阅 [@stello-ai/session](/docs/api-reference/session)。
+所有构造函数签名为 `(client: pg.Pool | pg.PoolClient, spaceId: string)`。接口详情参阅 [@stello-ai/session](/api-reference/session)。

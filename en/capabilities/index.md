@@ -6,8 +6,8 @@ This chapter demonstrates how to build real applications with Stello's core conc
 
 | Scenario | Core Mechanism | Description |
 |----------|---------------|-------------|
-| [Project Planner](/en/docs/capabilities/planner) | Structured L2 + conflict detection | Multiple plans in parallel; Main Session uses JSON-formatted L2 to precisely detect resource and timeline conflicts, pushing adjustment advice |
-| [Brainstorming](/en/docs/capabilities/brainstorm) | Divergent exploration + theme synthesis | Auto-split from one question into multiple exploration directions; Main Session finds connections and contradictions, driving cross-pollination of ideas |
+| [Project Planner](/en/capabilities/planner) | Structured L2 + conflict detection | Multiple plans in parallel; Main Session uses JSON-formatted L2 to precisely detect resource and timeline conflicts, pushing adjustment advice |
+| [Brainstorming](/en/capabilities/brainstorm) | Divergent exploration + theme synthesis | Auto-split from one question into multiple exploration directions; Main Session finds connections and contradictions, driving cross-pollination of ideas |
 
 ## Common Pattern
 

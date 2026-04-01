@@ -6,8 +6,8 @@
 
 | 场景 | 核心机制 | 说明 |
 |------|---------|------|
-| [项目规划助手](/docs/capabilities/planner) | 结构化 L2 + 冲突检测 | 多计划并行推进，Main Session 通过 JSON 格式的 L2 精确识别资源冲突和时间冲突，推送调整建议 |
-| [头脑风暴](/docs/capabilities/brainstorm) | 发散探索 + 主题聚合 | 从一个问题出发自动分裂为多个探索方向，Main Session 发现方向之间的关联和矛盾，推动想法交叉授粉 |
+| [项目规划助手](/capabilities/planner) | 结构化 L2 + 冲突检测 | 多计划并行推进，Main Session 通过 JSON 格式的 L2 精确识别资源冲突和时间冲突，推送调整建议 |
+| [头脑风暴](/capabilities/brainstorm) | 发散探索 + 主题聚合 | 从一个问题出发自动分裂为多个探索方向，Main Session 发现方向之间的关联和矛盾，推动想法交叉授粉 |
 
 ## 共同模式
 

@@ -21,6 +21,7 @@ interface DevtoolsOptions {
   sessionAccess?: SessionAccessProvider
   tools?: ToolsProvider
   skills?: SkillsProvider
+  skillDirs?: string[]
   integration?: IntegrationProvider
   reset?: ResetProvider
   stateStore?: DevtoolsStateStore
@@ -36,6 +37,7 @@ interface DevtoolsOptions {
 | `sessionAccess` | - | Session-level access capabilities |
 | `tools` | - | Tool toggle provider |
 | `skills` | - | Skill toggle provider |
+| `skillDirs` | - | Directories to load SKILL.md files from, supports `~` expansion |
 | `integration` | - | Callback to manually trigger integration |
 | `reset` | - | Callback to clear data and reinitialize |
 | `stateStore` | - | Global DevTools state persistence |

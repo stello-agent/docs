@@ -189,6 +189,38 @@ const agent = createStelloAgent({
 
 No need to manually register the `activate_skill` tool — the Engine handles it automatically when skills are present.
 
+### Loading Skills from the Filesystem
+
+In addition to programmatic registration, you can bulk-load standard SKILL.md files from a directory:
+
+```typescript
+import { SkillRouterImpl, loadSkillsFromDirectory } from '@stello-ai/core'
+
+const skills = new SkillRouterImpl()
+
+// Loads ~/my-skills/skill-a/SKILL.md, ~/my-skills/skill-b/SKILL.md, ...
+const loaded = await loadSkillsFromDirectory('~/my-skills')
+for (const skill of loaded) skills.register(skill)
+```
+
+SKILL.md uses YAML frontmatter + markdown content:
+
+```yaml
+---
+name: code-review
+description: Code review expert
+---
+You are a code review expert. Analyze code for correctness, maintainability, and security.
+```
+
+DevTools also supports loading via the `skillDirs` option at startup:
+
+```typescript
+await startDevtools(agent, {
+  skillDirs: ['./skills', '~/.shared-skills'],
+})
+```
+
 ## Notes
 
 - **Session does not run tool call loops** -- Session only makes a single LLM call; the tool call loop is driven by Engine (orchestration layer)

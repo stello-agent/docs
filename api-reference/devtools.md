@@ -21,6 +21,7 @@ interface DevtoolsOptions {
   sessionAccess?: SessionAccessProvider
   tools?: ToolsProvider
   skills?: SkillsProvider
+  skillDirs?: string[]
   integration?: IntegrationProvider
   reset?: ResetProvider
   stateStore?: DevtoolsStateStore
@@ -36,6 +37,7 @@ interface DevtoolsOptions {
 | `sessionAccess` | - | Session 级别访问能力 |
 | `tools` | - | Tools 动态开关提供者 |
 | `skills` | - | Skills 动态开关提供者 |
+| `skillDirs` | - | 从文件系统加载 SKILL.md 的目录列表，支持 `~` 展开 |
 | `integration` | - | 手动触发 integration 的回调 |
 | `reset` | - | 清空数据并重新初始化的回调 |
 | `stateStore` | - | 全局 DevTools 状态持久化 |

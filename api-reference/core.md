@@ -278,6 +278,30 @@ function createSkillToolDefinition(router: SkillRouter): ToolDefinition
 function executeSkillTool(router: SkillRouter, args: { name: string }): ToolExecutionResult
 ```
 
+### Skill 文件加载
+
+从文件系统批量加载标准 SKILL.md 格式的 skill。
+
+```typescript
+// 扫描目录，加载所有 <dir>/<skill-name>/SKILL.md
+function loadSkillsFromDirectory(dir: string): Promise<Skill[]>
+
+// 解析单个 SKILL.md 的 YAML frontmatter + content
+function parseFrontmatter(raw: string): Skill | null
+```
+
+SKILL.md 格式：
+
+```yaml
+---
+name: skill-name
+description: 描述文本
+---
+markdown prompt 内容...
+```
+
+路径支持 `~` 展开（如 `~/my-skills`）。
+
 ### LLM 默认实现
 
 ```typescript

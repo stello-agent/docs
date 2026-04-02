@@ -278,6 +278,30 @@ function createSkillToolDefinition(router: SkillRouter): ToolDefinition
 function executeSkillTool(router: SkillRouter, args: { name: string }): ToolExecutionResult
 ```
 
+### Skill File Loading
+
+Load skills from the filesystem in standard SKILL.md format.
+
+```typescript
+// Scan directory, load all <dir>/<skill-name>/SKILL.md
+function loadSkillsFromDirectory(dir: string): Promise<Skill[]>
+
+// Parse a single SKILL.md's YAML frontmatter + content
+function parseFrontmatter(raw: string): Skill | null
+```
+
+SKILL.md format:
+
+```yaml
+---
+name: skill-name
+description: description text
+---
+markdown prompt content...
+```
+
+Paths support `~` expansion (e.g. `~/my-skills`).
+
 ### LLM Defaults
 
 ```typescript

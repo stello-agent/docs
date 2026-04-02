@@ -189,6 +189,37 @@ const agent = createStelloAgent({
 
 无需手动注册 `activate_skill` tool——Engine 检测到有 skill 时自动处理。
 
+### 从文件系统加载 Skill
+
+除了代码注册，还可以从目录批量加载标准 SKILL.md 文件：
+
+```typescript
+import { SkillRouterImpl, loadSkillsFromDirectory } from '@stello-ai/core'
+
+const skills = new SkillRouterImpl()
+
+// 加载 ~/my-skills/skill-a/SKILL.md, ~/my-skills/skill-b/SKILL.md, ...
+const loaded = await loadSkillsFromDirectory('~/my-skills')
+for (const skill of loaded) skills.register(skill)
+```
+
+SKILL.md 使用 YAML frontmatter + markdown content：
+
+```yaml
+---
+name: code-review
+description: 代码审查专家
+---
+你是代码审查专家。请分析代码的正确性、可维护性和安全性。
+```
+
+DevTools 也支持通过 `skillDirs` 选项在启动时加载：
+
+```typescript
+await startDevtools(agent, {
+  skillDirs: ['./skills', '~/.shared-skills'],
+})
+
 ## 注意事项
 
 - **Session 不做 tool call 循环** -- Session 只做单次 LLM 调用，tool call 循环由 Engine（编排层）驱动

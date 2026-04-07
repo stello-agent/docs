@@ -67,13 +67,21 @@ Scheduler 控制 consolidation 和 integration 的触发时机，详见 [Consoli
 Engine 接管子 Session 的创建编排。当 LLM 调用 `stello_create_session` 工具或应用层调用 `agent.forkSession()` 时：
 
 1. **SplitGuard 检查** — 是否满足最少轮次和冷却期要求
-2. **创建拓扑节点** — Engine 调用 `sessions.createChild()` 生成 TopologyNode
-3. **创建 Session runtime** — Engine 调用 `resolver.create(childId, options)` 委托应用层创建实际的 Session 实例
+2. **创建拓扑节点** — Engine 调用 `sessions.createChild()` 生成 TopologyNode（Topology-first，ID 由此产生）
+3. **Fork Session** — Engine 调用 `parentSession.fork({ id: child.id, ... })`，session 包处理 systemPrompt 继承、上下文继承（含 contextFn）、prompt 写入、LLM/tools 覆盖
 4. **触发事件** — 发射 `onSessionFork` 事件
 
-应用层通过 `sessionCreator` 配置提供 Session 创建工厂，Engine 负责编排步骤顺序和拓扑管理。Session 创建的具体逻辑（systemPrompt、LLM 适配器、工具列表）由工厂决定。
+Session 层的 `fork()` 方法处理所有 Session 关注点，Engine 只负责拓扑编排和生命周期钩子。
 
-如果注册了 [Fork Profile](/guides/tool-calling#fork-profile)，Engine 还会在调用 `resolver.create` 之前解析 profile 并合成 systemPrompt。
+如果注册了 [Fork Profile](/guides/tool-calling#fork-profile)，Engine 在调用 `fork()` 之前解析 profile，将 profile 的 systemPrompt、contextFn、llm、tools 合成到 fork 选项中。
+
+### 拓扑父节点与 Fork 来源的分离
+
+Orchestrator 区分两个概念：
+- **拓扑父节点** — 由编排策略（如 `MainSessionFlatStrategy`）决定，控制子 Session 在树中的位置
+- **Fork 来源** — 实际调用 `fork()` 的 Session，决定子 Session 继承哪个 Session 的上下文
+
+例如，在平铺策略下，所有子 Session 都挂在 Main Session 下（拓扑父节点 = root），但 fork 在用户当前对话的 Session 上执行（Fork 来源 = source session）。这确保 `context: 'inherit'` 继承的是用户正在对话的内容，而不是 Main Session 的全局上下文。
 
 ## 四层架构位置
 

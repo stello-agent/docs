@@ -33,7 +33,6 @@ interface StelloAgentConfig {
 ```typescript
 interface StelloAgentSessionConfig {
   sessionResolver?: (sessionId: string) => Promise<SessionCompatible>
-  sessionCreator?: (sessionId: string, options: SessionRuntimeCreateOptions) => Promise<SessionCompatible>
   mainSessionResolver?: () => Promise<MainSessionCompatible | null>
   consolidateFn?: SessionCompatibleConsolidateFn
   integrateFn?: SessionCompatibleIntegrateFn
@@ -45,8 +44,7 @@ interface StelloAgentSessionConfig {
 
 | 字段 | 说明 |
 |------|------|
-| `sessionResolver` | 按 sessionId 解析真实 Session 实例 |
-| `sessionCreator` | 创建新 Session 的工厂。提供后 Engine 接管 fork 编排（创建拓扑节点 + 调用此工厂创建 session） |
+| `sessionResolver` | 按 sessionId 解析真实 Session 实例。Session 需实现 `fork()` 以支持子 Session 创建 |
 | `mainSessionResolver` | 解析 MainSession，仅在需要 integration 时提供 |
 | `consolidateFn` | Session L3 → L2 的提炼函数 |
 | `integrateFn` | MainSession integration 函数 |
@@ -55,7 +53,7 @@ interface StelloAgentSessionConfig {
 | `options` | 预留给 Session 组件的透传配置 |
 
 ::: tip
-如果提供了 `sessionResolver` + `consolidateFn`，core 会自动构建 `runtime.resolver`。如果同时提供了 `sessionCreator`，core 还会自动构建 `resolver.create`，启用 Engine-owned fork。
+如果提供了 `sessionResolver` + `consolidateFn`，core 会自动构建 `runtime.resolver`。Fork 由 `session.fork()` 处理——Engine 调用当前 Session 的 fork() 方法创建子 Session，无需单独提供创建工厂。
 :::
 
 ## StelloAgentCapabilitiesConfig
@@ -93,7 +91,7 @@ interface EngineLifecycleAdapter {
 | `afterTurn` | 每轮结束后处理：提取 L1、更新 memory、追加 L3 |
 
 ::: info
-Fork 子 Session 的职责已移至 `SessionRuntimeResolver.create()`。Engine 自动编排：先创建拓扑节点，再调用 `resolver.create()` 创建 session runtime。应用层通过 `sessionCreator` 配置提供创建工厂。
+Fork 由 Engine 编排：先创建拓扑节点（生成 ID），再调用当前 Session 的 `fork({ id, ... })` 方法创建子 Session。Session 层处理所有 Session 关注点（systemPrompt 继承、上下文继承、LLM/tools 覆盖）。
 :::
 
 ### EngineToolRuntime
@@ -200,7 +198,7 @@ interface StelloAgentRuntimeConfig {
 
 | 字段 | 说明 |
 |------|------|
-| `resolver` | Session 运行时解析器（支持 `resolve` 加载 + `create` 创建） |
+| `resolver` | Session 运行时解析器 |
 | `recyclePolicy` | Engine 回收策略 |
 
 ### SessionRuntimeResolver
@@ -208,17 +206,17 @@ interface StelloAgentRuntimeConfig {
 ```typescript
 interface SessionRuntimeResolver {
   resolve(sessionId: string): Promise<EngineRuntimeSession>
-  create?(sessionId: string, options: SessionRuntimeCreateOptions): Promise<EngineRuntimeSession>
 }
 ```
 
 | 方法 | 说明 |
 |------|------|
 | `resolve` | 按 sessionId 加载已有 session runtime |
-| `create` | 创建新 session runtime（提供后 Engine 接管 fork 编排） |
+
+Fork 不需要 resolver 参与——Engine 直接调用当前 Session 的 `fork()` 方法。resolver 只负责按 ID 加载 Session。
 
 ::: tip
-通常不需要手动实现 `SessionRuntimeResolver`。提供 `session.sessionResolver` + `session.sessionCreator` + `session.consolidateFn` 后，core 会自动构建完整的 resolver（含 `resolve` 和 `create`）。
+通常不需要手动实现 `SessionRuntimeResolver`。提供 `session.sessionResolver` + `session.consolidateFn` 后，core 会自动构建 resolver。
 :::
 
 ### RuntimeRecyclePolicy

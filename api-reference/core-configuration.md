@@ -33,6 +33,7 @@ interface StelloAgentConfig {
 ```typescript
 interface StelloAgentSessionConfig {
   sessionResolver?: (sessionId: string) => Promise<SessionCompatible>
+  sessionCreator?: (sessionId: string, options: SessionRuntimeCreateOptions) => Promise<SessionCompatible>
   mainSessionResolver?: () => Promise<MainSessionCompatible | null>
   consolidateFn?: SessionCompatibleConsolidateFn
   integrateFn?: SessionCompatibleIntegrateFn
@@ -45,6 +46,7 @@ interface StelloAgentSessionConfig {
 | 字段 | 说明 |
 |------|------|
 | `sessionResolver` | 按 sessionId 解析真实 Session 实例 |
+| `sessionCreator` | 创建新 Session 的工厂。提供后 Engine 接管 fork 编排（创建拓扑节点 + 调用此工厂创建 session） |
 | `mainSessionResolver` | 解析 MainSession，仅在需要 integration 时提供 |
 | `consolidateFn` | Session L3 → L2 的提炼函数 |
 | `integrateFn` | MainSession integration 函数 |
@@ -53,7 +55,7 @@ interface StelloAgentSessionConfig {
 | `options` | 预留给 Session 组件的透传配置 |
 
 ::: tip
-如果提供了 `sessionResolver` + `consolidateFn`，core 会自动构建 `runtime.resolver`。如果同时手动提供了 `runtime.resolver`，手动配置优先。
+如果提供了 `sessionResolver` + `consolidateFn`，core 会自动构建 `runtime.resolver`。如果同时提供了 `sessionCreator`，core 还会自动构建 `resolver.create`，启用 Engine-owned fork。
 :::
 
 ## StelloAgentCapabilitiesConfig
@@ -64,15 +66,17 @@ interface StelloAgentCapabilitiesConfig {
   tools: EngineToolRuntime
   skills: SkillRouter
   confirm: ConfirmProtocol
+  profiles?: ForkProfileRegistry
 }
 ```
 
 | 字段 | 说明 |
 |------|------|
 | `lifecycle` | 生命周期适配器 |
-| `tools` | 工具运行时 |
+| `tools` | 工具运行时（可直接使用 `ToolRegistryImpl`） |
 | `skills` | 技能路由 |
 | `confirm` | 确认协议 |
+| `profiles` | Fork Profile 注册表（可选），预注册 fork 配置模板供 LLM 引用 |
 
 ### EngineLifecycleAdapter
 
@@ -80,7 +84,6 @@ interface StelloAgentCapabilitiesConfig {
 interface EngineLifecycleAdapter {
   bootstrap(sessionId: string): Promise<BootstrapResult>
   afterTurn(sessionId: string, userMsg: TurnRecord, assistantMsg: TurnRecord): Promise<AfterTurnResult>
-  prepareChildSpawn(options: CreateSessionOptions): Promise<TopologyNode>
 }
 ```
 
@@ -88,7 +91,10 @@ interface EngineLifecycleAdapter {
 |------|------|
 | `bootstrap` | 进入 Session 时做初始化，返回组装好的上下文和元数据 |
 | `afterTurn` | 每轮结束后处理：提取 L1、更新 memory、追加 L3 |
-| `prepareChildSpawn` | fork 子 Session 前准备：创建文件夹、元数据、拓扑节点 |
+
+::: info
+Fork 子 Session 的职责已移至 `SessionRuntimeResolver.create()`。Engine 自动编排：先创建拓扑节点，再调用 `resolver.create()` 创建 session runtime。应用层通过 `sessionCreator` 配置提供创建工厂。
+:::
 
 ### EngineToolRuntime
 
@@ -142,6 +148,47 @@ interface Skill {
 
 Engine 在有 skill 注册时自动追加 `activate_skill` tool 到 `getToolDefinitions()` 列表，LLM 可通过 tool call 激活 skill。
 
+### ForkProfileRegistry / ForkProfile
+
+预注册 fork 配置模板，LLM 在创建子 Session 时通过 `profile` 参数引用。
+
+```typescript
+interface ForkProfileRegistry {
+  register(name: string, profile: ForkProfile): void
+  get(name: string): ForkProfile | undefined
+  listNames(): string[]
+}
+
+interface ForkProfile {
+  systemPrompt?: string | ((vars: Record<string, string>) => string)
+  systemPromptMode?: 'preset' | 'prepend' | 'append'  // 默认 'prepend'
+  llm?: LLMAdapter
+  tools?: LLMCompleteOptions['tools']
+  context?: 'none' | 'inherit'
+  contextFn?: ForkContextFn
+}
+```
+
+| systemPromptMode | 行为 |
+|-----------------|------|
+| `prepend`（默认） | profile prompt 在前，LLM prompt 在后 |
+| `append` | LLM prompt 在前，profile prompt 在后 |
+| `preset` | 只用 profile prompt，忽略 LLM 提供的 prompt |
+
+### ToolRegistry
+
+`ToolRegistryImpl` 实现 `EngineToolRuntime` 接口，可直接作为 `capabilities.tools` 使用。
+
+```typescript
+interface ToolRegistry extends EngineToolRuntime {
+  register(tool: ToolRegistryEntry): void
+  get(name: string): ToolRegistryEntry | undefined
+  getAll(): ToolRegistryEntry[]
+}
+```
+
+应用层通过 `register()` 注册自定义工具，Engine 自动合并内置工具（`stello_create_session`、`activate_skill`）和用户工具。
+
 ## StelloAgentRuntimeConfig
 
 ```typescript
@@ -153,8 +200,26 @@ interface StelloAgentRuntimeConfig {
 
 | 字段 | 说明 |
 |------|------|
-| `resolver` | Session 运行时解析器 |
+| `resolver` | Session 运行时解析器（支持 `resolve` 加载 + `create` 创建） |
 | `recyclePolicy` | Engine 回收策略 |
+
+### SessionRuntimeResolver
+
+```typescript
+interface SessionRuntimeResolver {
+  resolve(sessionId: string): Promise<EngineRuntimeSession>
+  create?(sessionId: string, options: SessionRuntimeCreateOptions): Promise<EngineRuntimeSession>
+}
+```
+
+| 方法 | 说明 |
+|------|------|
+| `resolve` | 按 sessionId 加载已有 session runtime |
+| `create` | 创建新 session runtime（提供后 Engine 接管 fork 编排） |
+
+::: tip
+通常不需要手动实现 `SessionRuntimeResolver`。提供 `session.sessionResolver` + `session.sessionCreator` + `session.consolidateFn` 后，core 会自动构建完整的 resolver（含 `resolve` 和 `create`）。
+:::
 
 ### RuntimeRecyclePolicy
 

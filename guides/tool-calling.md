@@ -76,31 +76,125 @@ interface ToolAnnotations {
 
 ## 内置工具
 
-### createSessionTool
+### stello_create_session
 
-Stello 内置了 `stello_create_session` 工具，允许 LLM 主动创建新的子 Session（fork）：
+Engine 自动注入 `stello_create_session` 内置工具，允许 LLM 主动创建子 Session（fork）。无需手动注册。
+
+LLM 可用参数：
+
+| 参数 | 类型 | 必填 | 说明 |
+|------|------|------|------|
+| `label` | string | 是 | 子会话的显示名称 |
+| `systemPrompt` | string | 否 | 子会话的系统提示词，不提供则继承父会话 |
+| `prompt` | string | 否 | 子会话的第一条 assistant 开场消息 |
+| `context` | `'none'` \| `'inherit'` | 否 | 上下文继承策略，默认 `'none'` |
+| `profile` | string | 否 | 预注册的 Fork Profile 名称（见下方） |
+| `vars` | object | 否 | profile systemPrompt 模板的变量 |
+
+### Fork Profile
+
+Fork Profile 允许开发者预注册 fork 配置模板（LLM 适配器、工具集、systemPrompt 模板、上下文策略），LLM 在创建子 Session 时通过 `profile` 参数引用。
+
+#### 注册 Profile
 
 ```typescript
-import { createSessionTool } from '@stello-ai/core'
+import { ForkProfileRegistryImpl, createClaude } from '@stello-ai/core'
 
-// 在配置 Engine 时注册
-const engine = createEngine({
-  tools: [createSessionTool, weatherTool],
+const profiles = new ForkProfileRegistryImpl()
+
+// 研究型：强 LLM + 搜索工具 + 继承上下文
+profiles.register('research', {
+  systemPrompt: '你是深度研究助手，针对给定话题做详细调研和分析。',
+  systemPromptMode: 'prepend',
+  llm: createClaude({ model: 'claude-sonnet-4-5-20250514' }),
+  tools: [webSearchTool, saveNoteTool],
+  context: 'inherit',
+})
+
+// 轻量型：快速 LLM + 空上下文
+profiles.register('lightweight', {
+  llm: createClaude({ model: 'claude-haiku-4-5-20251001' }),
+  context: 'none',
+})
+
+// 严格型：固定角色，LLM 不能覆盖 systemPrompt
+profiles.register('region-expert', {
+  systemPrompt: (vars) => `你是${vars.region}留学专家，只负责${vars.region}地区。`,
+  systemPromptMode: 'preset',
+})
+
+// 注入 agent
+const agent = createStelloAgent({
   // ...
+  capabilities: {
+    // ...
+    profiles,
+  },
 })
 ```
 
-## EngineToolRuntime
+注册 profile 后，`stello_create_session` 工具的参数中会自动出现 `profile` 和 `vars` 选项。
 
-Engine 内部通过 `EngineToolRuntime` 管理工具的注册和执行：
+#### systemPrompt 合成策略
+
+Profile 的 `systemPromptMode` 决定 profile prompt 与 LLM prompt 的叠加方式：
+
+| 模式 | 行为 | 适用场景 |
+|------|------|---------|
+| `prepend`（默认） | profile prompt + LLM prompt | profile 定义角色骨架，LLM 补充上下文 |
+| `append` | LLM prompt + profile prompt | LLM 写主体，profile 追加约束 |
+| `preset` | 只用 profile prompt，忽略 LLM prompt | 严格控制角色定义 |
+
+#### 不使用 Profile
+
+不注册任何 profile 时，`stello_create_session` 的行为与之前完全一致——LLM 自由指定 `systemPrompt`、`prompt`、`context`。
+
+## 注册工具：ToolRegistry
+
+`ToolRegistryImpl` 是注册自定义工具的推荐方式。它实现了 `EngineToolRuntime` 接口，可直接作为 `capabilities.tools` 传入：
 
 ```typescript
-interface EngineToolRuntime {
-  /** 获取所有工具的 LLM 定义（用于传递给 LLMAdapter） */
-  getToolDefinitions(): ToolDefinition[]
-  /** 执行指定工具 */
-  executeTool(name: string, args: unknown): Promise<CallToolResult>
-}
+import { ToolRegistryImpl } from '@stello-ai/core'
+
+const toolRegistry = new ToolRegistryImpl()
+
+toolRegistry.register({
+  name: 'save_note',
+  description: '保存调研结论',
+  parameters: {
+    type: 'object',
+    properties: {
+      note: { type: 'string', description: '要保存的内容' },
+    },
+    required: ['note'],
+  },
+  execute: async (args) => {
+    await saveNote(args.note as string)
+    return { success: true, data: { saved: true } }
+  },
+})
+
+// 传入 StelloAgent
+const agent = createStelloAgent({
+  // ...
+  capabilities: {
+    tools: toolRegistry,  // 直接使用
+    // ...
+  },
+})
+```
+
+Engine 自动在用户注册的工具之上注入内置工具（`stello_create_session`、`activate_skill`），无需手动注册。
+
+### buildSessionToolList
+
+Session 创建时需要告知 LLM 可用工具列表。`buildSessionToolList()` 合并内置工具和用户工具，输出 session 兼容格式：
+
+```typescript
+import { buildSessionToolList } from '@stello-ai/core'
+
+const sessionTools = buildSessionToolList(toolRegistry, skillRouter, profiles)
+// 传入 loadSession({ tools: sessionTools }) 或 createSession({ tools: sessionTools })
 ```
 
 ## Tool Call 循环
@@ -130,30 +224,36 @@ Session.send() → LLM Response (no toolCalls) → 返回
 ## 完整示例
 
 ```typescript
-import { tool, createSessionTool, createEngine, createClaude } from '@stello-ai/core'
+import { ToolRegistryImpl, createStelloAgent } from '@stello-ai/core'
 import { z } from 'zod'
 
-const searchTool = tool(
-  'search_docs',
-  '搜索文档库',
-  z.object({
-    query: z.string().describe('搜索关键词'),
-    limit: z.number().optional().default(5).describe('返回结果数量'),
-  }),
-  async (input) => {
-    const results = await searchDocuments(input.query, input.limit)
-    return {
-      content: [{ type: 'text', text: JSON.stringify(results) }],
-    }
-  },
-  { readOnlyHint: true, title: '文档搜索' }
-)
+// 注册自定义工具
+const toolRegistry = new ToolRegistryImpl()
 
-const agent = createEngine({
-  llm: createClaude({ apiKey: process.env.ANTHROPIC_API_KEY }),
-  tools: [searchTool, createSessionTool],
-  maxToolRounds: 10,
+toolRegistry.register({
+  name: 'search_docs',
+  description: '搜索文档库',
+  parameters: {
+    type: 'object',
+    properties: {
+      query: { type: 'string', description: '搜索关键词' },
+      limit: { type: 'number', description: '返回结果数量' },
+    },
+    required: ['query'],
+  },
+  execute: async (args) => {
+    const results = await searchDocuments(args.query as string, args.limit as number)
+    return { success: true, data: results }
+  },
+})
+
+// Engine 自动注入 stello_create_session + activate_skill
+const agent = createStelloAgent({
   // ...
+  capabilities: {
+    tools: toolRegistry,
+    // ...
+  },
 })
 ```
 

@@ -62,6 +62,19 @@ Scheduler 控制 consolidation 和 integration 的触发时机，详见 [Consoli
 | **切换时** | `onSwitch` | `afterConsolidate` | 频繁切换 Session 的场景 |
 | **手动** | `manual` | `manual` | 需要精确控制的场景 |
 
+## Fork 编排
+
+Engine 接管子 Session 的创建编排。当 LLM 调用 `stello_create_session` 工具或应用层调用 `agent.forkSession()` 时：
+
+1. **SplitGuard 检查** — 是否满足最少轮次和冷却期要求
+2. **创建拓扑节点** — Engine 调用 `sessions.createChild()` 生成 TopologyNode
+3. **创建 Session runtime** — Engine 调用 `resolver.create(childId, options)` 委托应用层创建实际的 Session 实例
+4. **触发事件** — 发射 `onSessionFork` 事件
+
+应用层通过 `sessionCreator` 配置提供 Session 创建工厂，Engine 负责编排步骤顺序和拓扑管理。Session 创建的具体逻辑（systemPrompt、LLM 适配器、工具列表）由工厂决定。
+
+如果注册了 [Fork Profile](/guides/tool-calling#fork-profile)，Engine 还会在调用 `resolver.create` 之前解析 profile 并合成 systemPrompt。
+
 ## 四层架构位置
 
 从下到上依次是：**Session 层**（`@stello-ai/session`，send / consolidate / fork / 上下文组装）→ **编排层**（`@stello-ai/core`，Engine / Scheduler / Strategy / fork 编排）→ **应用层**（开发者提供 StorageAdapter、LLMAdapter、ConsolidateFn、IntegrateFn、工具定义）→ **HTTP / SDK 层**（`@stello-ai/server`）。

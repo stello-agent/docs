@@ -216,6 +216,8 @@ interface ForkProfile {
   context?: 'none' | 'inherit'
   /** 自定义上下文转换函数（优先于 context 字段） */
   contextFn?: ForkContextFn
+  /** 可用 skill 白名单；不传 = 全部可用，空数组 = 禁用 activate_skill */
+  skills?: string[]
 }
 ```
 
@@ -353,6 +355,101 @@ LLM 流程：
 3. Engine 解析 profile → preset systemPrompt + contextFn 压缩上下文
 4. 子 Session 以专家角色 + 压缩上下文启动
 
+### Per-Session Skills：控制子 Session 的能力边界 {#per-session-skills}
+
+`ForkProfile.skills` 白名单控制 fork 出的子 Session 能使用哪些 skill。这让你可以精确限定每种子 Session 的能力范围。
+
+| `skills` 值 | 行为 |
+|-------------|------|
+| `undefined`（不传） | 继承全局所有 skills |
+| `['a', 'b']` | 只能 `activate_skill` 白名单内的 skills |
+| `[]`（空数组） | 完全禁用 `activate_skill` 工具 |
+
+#### 示例：留学咨询系统 — 用 Skill 控制子 Session 的 fork 种类
+
+一个留学咨询 Agent，Main Session 是总顾问，可以创建不同国家的子 Session。每个国家的子 Session 只能创建属于该国的更细分 Session（如选校、文书），不能跨国创建。
+
+```typescript
+// ─── Skills：定义各种创建子 Session 的行为指导 ───
+
+skills.register({
+  name: 'create-us-session',
+  description: '创建美国留学相关的子会话（选校、文书、签证）',
+  content: `当需要深入讨论美国留学的具体方向时，创建子会话：
+- 选校方向：stello_create_session({ label: '美国选校-...', profile: 'us-child' })
+- 文书方向：stello_create_session({ label: '美国文书-...', profile: 'us-child' })
+确保 label 包含具体学校或方向名称。`,
+})
+
+skills.register({
+  name: 'create-uk-session',
+  description: '创建英国留学相关的子会话（选校、文书、签证）',
+  content: `当需要深入讨论英国留学的具体方向时，创建子会话：
+- 选校方向：stello_create_session({ label: '英国选校-...', profile: 'uk-child' })
+- 文书方向：stello_create_session({ label: '英国文书-...', profile: 'uk-child' })
+确保 label 包含具体学校或方向名称。`,
+})
+
+skills.register({
+  name: 'general-research',
+  description: '通用调研助手',
+  content: '使用搜索工具深入调研用户关心的话题，提供结构化报告。',
+})
+
+// ─── Profiles：定义技术配置 + skills 白名单 ───
+
+// 美国方向：只能用 create-us-session 和 general-research
+profiles.register('us-region', {
+  systemPrompt: '你是美国留学专家，负责美国方向的所有咨询。',
+  systemPromptMode: 'preset',
+  skills: ['create-us-session', 'general-research'],
+})
+
+// 英国方向：只能用 create-uk-session 和 general-research
+profiles.register('uk-region', {
+  systemPrompt: '你是英国留学专家，负责英国方向的所有咨询。',
+  systemPromptMode: 'preset',
+  skills: ['create-uk-session', 'general-research'],
+})
+
+// 美国子任务：不需要继续 fork，禁用所有 skills
+profiles.register('us-child', {
+  systemPrompt: '你是美国留学选校顾问，专注于具体的选校分析。',
+  systemPromptMode: 'preset',
+  skills: [],  // 叶子节点，不需要 activate_skill
+})
+
+profiles.register('uk-child', {
+  systemPrompt: '你是英国留学选校顾问，专注于具体的选校分析。',
+  systemPromptMode: 'preset',
+  skills: [],
+})
+```
+
+运行时效果：
+
+```
+Main Session（全局所有 skills）
+├─ 美国方向 session（profile: 'us-region'）
+│  ├─ activate_skill 可见：create-us-session, general-research
+│  ├─ activate_skill 不可见：create-uk-session ← 无法创建英国子会话
+│  └─ 美国选校-MIT session（profile: 'us-child', skills: []）
+│     └─ 无 activate_skill 工具 ← 叶子节点，专注执行
+├─ 英国方向 session（profile: 'uk-region'）
+│  ├─ activate_skill 可见：create-uk-session, general-research
+│  └─ activate_skill 不可见：create-us-session
+```
+
+关键设计点：
+
+- **Skill 定义"怎么 fork"**：skill content 告诉 LLM 用哪个 profile、如何填写参数
+- **Profile.skills 定义"能用哪些 skill"**：白名单控制子 Session 的能力边界
+- **两者组合形成 skill → fork → skill 链路**：Main Session 的 skill 引导创建子 Session，子 Session 的 skills 白名单又限定了它能做什么
+
+::: tip
+`skills` 白名单只影响 `activate_skill` 工具的可见范围，不影响 `stello_create_session` 工具本身。即使 `skills: []` 的子 Session 仍然可以通过 `stello_create_session` 直接创建子 Session（如果 LLM 自行决定），但它没有 skill 来指导如何创建。通常 LLM 在没有相关 skill 的情况下不会主动 fork。
+:::
+
 ## 内置工具：activate_skill
 
 当 `SkillRouter` 中注册了 skill 时，Engine 自动在 tool 列表中追加一个 `activate_skill` 工具。LLM 看到所有已注册 skill 的 name + description，通过 tool call 按名称激活，Engine 返回 skill 的 content 作为 tool result 注入上下文。
@@ -459,7 +556,8 @@ profiles.register('deep-research', {
   systemPromptMode: 'prepend',
   llm: createClaude({ model: 'claude-sonnet-4-5-20250514' }),
   tools: [webSearchTool],
-  contextFn: async (records) => records.slice(-20),  // 只保留最近 20 条
+  contextFn: async (records) => records.slice(-20),
+  skills: ['research-mode'],  // 研究子 Session 只能用研究相关的 skill
 })
 
 // 注册 Skill

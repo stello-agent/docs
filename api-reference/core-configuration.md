@@ -164,8 +164,19 @@ interface ForkProfile {
   tools?: LLMCompleteOptions['tools']
   context?: 'none' | 'inherit'
   contextFn?: ForkContextFn
+  skills?: string[]
 }
 ```
+
+| 字段 | 说明 |
+|------|------|
+| `systemPrompt` | 系统提示词模板；字符串或接收 vars 的函数 |
+| `systemPromptMode` | systemPrompt 合成策略（见下表），默认 `'prepend'` |
+| `llm` | 覆盖子 Session 的 LLM 适配器 |
+| `tools` | 覆盖子 Session 的工具列表 |
+| `context` | 上下文继承策略 |
+| `contextFn` | 自定义上下文转换函数（优先于 `context`） |
+| `skills` | 可用 skill 白名单。`undefined` = 继承全部，`['a']` = 仅白名单，`[]` = 禁用 activate_skill。详见 [Per-Session Skills](/guides/tool-calling#per-session-skills) |
 
 | systemPromptMode | 行为 |
 |-----------------|------|
